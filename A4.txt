@@ -1,0 +1,2 @@
+Leider war zum Zeitpunkt meiner Abgabe (02.07.) noch keine Klasse Kartenzähler verfügbar.
+Damit konnte ich die Implementierung nicht testen.
