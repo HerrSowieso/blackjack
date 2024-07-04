@@ -1,76 +1,161 @@
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+//zum Testen von einem Kommilitonen kopiert
 
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Player {
-    private String ipAddress;
-    private int port;
-    private String name;
-    private static final ObjectMapper serializer = new ObjectMapper();
 
-    public Player(String ipAddress, int port, String name) {
-        this.ipAddress = ipAddress;
-        this.port = port;
-        this.name = name;
+    private static int port;
+    private static String name;
+
+    private static ClientInfo croupier;
+
+    private static ArrayList<Card> hand = new ArrayList<>();
+    private static Double money;
+
+    private record ClientInfo(String ip, int port) { }
+
+    private static void fatal(String input) {
+        System.err.println(input);
+        System.exit(-1);
     }
 
-    public String getIpAddress() {
-        return ipAddress;
+    public static boolean isIP(String ip) { // Checks if String is valid IPv4 address
+        String[] parts = ip.split("\\."); // Split by dot
+        if (parts.length != 4) { return false; } // Must be 4 chunks
+        for (String p : parts) { // Check if numbers are valid
+            try {
+                int number = Integer.parseInt(p);
+                if (number < 0 || number > 255) { return false; }
+            } catch (NumberFormatException e) { return false; }
+        }
+        return true;
     }
 
-    public int getPort() {
-        return port;
+    public static boolean isPort(String port) {
+        try {
+            int number = Integer.parseInt(port);
+            if (number < 0 || number > 65535) { return false; }
+        } catch (NumberFormatException e) { return false; }
+        return true;
     }
 
-    public String getName() {
-        return name;
-    }
 
-    // Method to send registration request to the Croupier
-    public void registerWithCroupier(String croupierIp, int croupierPort) {
-        sendUDPMessage(croupierIp, croupierPort, "registerPlayer " + ipAddress + " " + port + " " + name);
-    }
+    public static void main(String[] args) {
 
-    // Method to send bet request to the Croupier
-    public void placeBetWithCroupier(String croupierIp, int croupierPort, int betAmount) {
-        sendUDPMessage(croupierIp, croupierPort, "bet " + name + " " + betAmount);
-    }
+        // Handling arguments, checking validity
+        if (args.length != 2) {
+            fatal("Arguments: \"<port number> <client name>\"");
+        }
+        if (!isPort(args[0])) {
+            fatal("Invalid port number");
+        } else {
+            port = Integer.parseInt(args[0]);
+        }
+        name = args[1];
 
-    // Method to receive a card and send acknowledgment
-    public void receiveCard(Card card) {
-        System.out.println("Received card: " + card.toString());
-        sendUDPMessage("localhost", 9999, "player " + name + " received " + card.getDeck() + " " + card.toString());
-    }
+        System.out.println(name + " (Port: " + port + ") is here, looking around.\nUse \"register <ip address> <port number>\" to contact another client.\nUse \"send <registered client name> <message>\" to message them.\nUse \"quit\" to exit program.");
+        // Start a new thread to listen for messages
+        new Thread(() -> receiveLines(port)).start();
 
-    // Generic method to send UDP message
-    private void sendUDPMessage(String croupierIp, int croupierPort, String message) {
-        try (DatagramSocket socket = new DatagramSocket()) {
-            byte[] buffer = message.getBytes();
-            InetAddress croupierAddress = InetAddress.getByName(croupierIp);
-            DatagramPacket packet = new DatagramPacket(buffer, buffer.length, croupierAddress, croupierPort);
-            socket.send(packet);
-
-            // Receive response
-            byte[] responseBuffer = new byte[1024];
-            DatagramPacket responsePacket = new DatagramPacket(responseBuffer, responseBuffer.length);
-            socket.receive(responsePacket);
-            String response = new String(responsePacket.getData(), 0, responsePacket.getLength());
-            System.out.println("Croupier response: " + response);
-        } catch (Exception e) {
+        // Main thread continues to process user input
+        try(BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) { // closes automatically
+            String input;
+            while (!(input = br.readLine()).equalsIgnoreCase("quit")) {
+                String[] parts = input.split(" ");
+                if (parts[0].equalsIgnoreCase("register") && parts.length == 3 && isPort(parts[2]) && isIP(parts[1])) {
+                    croupier = new ClientInfo(parts[1], Integer.parseInt(parts[2]));
+                    register(parts[1], Integer.parseInt(parts[2]));
+                } else if (parts[0].equalsIgnoreCase("placeBet")) {
+                    //Double amount = Double.parseDouble(parts[1]);
+                    String message =  String.format("placeBet %s %s", name, parts[1]);
+                    sendLines(croupier.ip, croupier.port, message);
+                    System.out.println("Sent \"" + message + "\" to croupier.");
+                } else if (parts[0].equalsIgnoreCase("hit")) {
+                    String message =  String.format("hit %s", name);
+                    sendLines(croupier.ip, croupier.port, message);
+                    System.out.println("Sent \"" + message + "\" to croupier.");
+                    receiveLines(port);
+                } else if (parts[0].equalsIgnoreCase("stand")) {
+                    String message =  String.format("stand %s", name);
+                    sendLines(croupier.ip, croupier.port, message);
+                    System.out.println("Sent \"" + message + "\" to croupier.");
+                } else if (parts[0].equalsIgnoreCase("double")){
+                    String message =  String.format("double %s", name);
+                    sendLines(croupier.ip, croupier.port, message);
+                    System.out.println("Sent \"" + message + "\" to croupier.");
+                } else if (parts[0].equalsIgnoreCase("split")){
+                    String message =  String.format("split %s", name);
+                    sendLines(croupier.ip, croupier.port, message);
+                    System.out.println("Sent \"" + message + "\" to croupier.");
+                } else if (parts[0].equalsIgnoreCase("surrender")){
+                    String message =  String.format("surrender %s", name);
+                    sendLines(croupier.ip, croupier.port, message);
+                    System.out.println("Sent \"" + message + "\" to croupier.");
+                }
+                else {
+                    System.err.println("Unknown command.");
+                }
+            }
+        } catch (IOException e) {
             e.printStackTrace();
+        }
+        System.exit(0);
+    }
+
+    private static final int packetSize = 4096;
+
+    private static void receiveLines(int port) {
+        try(DatagramSocket s = new DatagramSocket(port)) { // closes automatically
+            byte[] buffer = new byte[packetSize];
+            String line;
+            do {
+                DatagramPacket p = new DatagramPacket(buffer, buffer.length);
+                s.receive(p);
+                line = new String(buffer, 0, p.getLength(), StandardCharsets.UTF_8);
+                if (line.contains(name)) { // Register phrases
+                    Card card = Card.fromJSON(line);
+                    hand.add(card);
+                    System.out.println("Received card: " + card);
+                } else if (line.startsWith("earnings")){
+                    money += Double.parseDouble(line.split(" ")[1]);
+                    System.out.println("Received earnings: " + line.split(" ")[1]);
+                } else if (line.startsWith("busted")){
+                    System.out.println("Busted!");
+                } else {
+                    System.out.println("Error");
+                }
+            } while (!line.equalsIgnoreCase("quit"));
+        } catch (IOException e) {
+            System.err.println("Unable to receive message on port \"" + port + "\".");
         }
     }
 
-    public static void main(String[] args) {
-        Player player = new Player("192.168.1.1", 12345, "Alice");
-        player.registerWithCroupier("localhost", 9999); // Example Croupier IP and port
-        player.placeBetWithCroupier("localhost", 9999, 50); // Place a bet of 50 units
+    private static void sendLines(String friend, int friends_port, String message) {
+        try (DatagramSocket s = new DatagramSocket()) { // closes automatically
+            InetAddress ip = InetAddress.getByName(friend);
+            byte[] buffer = message.getBytes(StandardCharsets.UTF_8);
+            DatagramPacket p = new DatagramPacket(buffer, buffer.length, ip, friends_port);
+            s.send(p);
+            System.out.println("Message sent.");
+        } catch (IOException e) {
+            System.err.println("Unable to send message to \"" + friend + "\".");
+        }
+    }
 
-        // Example of receiving a card
-        Card exampleCard = new Card(Card.Color.HERZ, Card.Value.ASS, 1);
-        player.receiveCard(exampleCard); // Simulate receiving a card
+    private static void register(String friend, int friends_port) {
+        try {
+            String ip = InetAddress.getLocalHost().getHostAddress();
+            String message = String.format("registering %s %s %d", name, ip, Player.port);
+            sendLines(friend, friends_port, message);
+        } catch (UnknownHostException e) {
+            System.err.println("Unable to find client \"" + friend + "\".");
+        }
     }
 }

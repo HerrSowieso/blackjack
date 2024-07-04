@@ -1,2 +1,8 @@
-Leider war zum Zeitpunkt meiner Abgabe (02.07.) noch keine Klasse Kartenzähler verfügbar.
-Damit konnte ich die Implementierung nicht testen.
+Mir ist bewusst, dass mein Croupier Programm viele Schwächen aufweist und daher wahrscheinlich vieles nicht funktioniert. Ich habe etliche, erfolglose Versuche unternommen, um ein (halbwegs) funktionierendes Programm zu erstellen (siehe auch vorherige Commits).
+Zumindest kompiliert und startet mein Programm nun.
+
+Versuche ich das beigefügte CardCounter Programm meines Kommilitonen zu verbinden, so bekomme ich "incomplete message" vom Croupier ausgegeben. Das deutet daraufhin, dass mein Programm die Nachricht nicht richtig entschlüsseln und interpretieren kann. Das liegt vermutlich daran, dass dieser "Fehler" gemeldet wird durch den Längenvergleich der erhaltenen Nachricht. Theoretisch wäre es auch möglich, dass das CardCounter Programm eine nicht abgesprochene Syntax verwendet.
+Etwas Ähnliches erhalte ich bei der Registrierung eines Spielers mittels der beigefügten Lösung eines Kommilitonen. Jedoch wird hier tatsächlich eine Exception geworfen (NumberFormat), was auf einen Fehler beim Integer.parseInt hindeutet. Auch hier wird also die empfangene Nachricht nicht richtig interpretiert. Allerdings ist mir bei der Verwendung des Player Programms aufgefallen, dass für die Registrierung ein anderes Format als im docs Dokument abgesprochen verwendet wurde. so musste ich zur Registrierung keinen Namen angeben, sondern nur Ip-Adresse und Port Nummer des Croupier. Ob das intern umformatiert wird, konnte ich nicht entziffern.
+
+Leider konnte ich die restlichen Teile des Programms aufgrund der fehlschlagenden Registrierung nicht testen.
+Nach sehr vielen erfolglosen Versuchen und mehreren Stunden Arbeit und Auseinandersetzungen mit den Aufgaben, sowie fehlenden Grundlagen (wegen Lehramtstudium) bin ich nun ziemlich überfragt und aufgeschmissen. 
